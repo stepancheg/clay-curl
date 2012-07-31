@@ -40,6 +40,7 @@ curlEasyReset(curl: Curl) {
 }
 
 
+/// call given function and throw exception if it failed
 [Code | CCodePointer?(Code)]
 private callHandleError(code: Code, op: StringConstant, ..args) {
     var r = call(code, ..args);
@@ -58,21 +59,30 @@ overload curlEasySetoptParamConvert(p: Pointer[T]) = p;
 [C | CCodePointer?(C)]
 overload curlEasySetoptParamConvert(c: C) = c;
 
+/// generic curl_easy_setopt wrapper
+/// note value parameter must much option type, as described in curl manual
+/// http://curl.haxx.se/libcurl/c/curl_easy_setopt.html
+/// otherwise behaviour is unspecified
 curlEasySetopt(curl: Curl, opt, value) {
     callHandleError(curl_easy_setopt, "curl_easy_setopt", curl.curl, opt, curlEasySetoptParamConvert(value));
 }
 
+/// shortcut to set CURLOPT_VERBOSE
 curlEasySetVerbose(curl: Curl, verbose: Bool) =
     ..curlEasySetopt(curl, CURLOPT_VERBOSE, verbose);
 
+/// shortcur to set CURLOPT_FAILONERROR
 curlEasySetFailOnError(curl: Curl, fail: Bool) =
     ..curlEasySetopt(curl, CURLOPT_FAILONERROR, fail);
 
+/// trampoline is used to "convert" curl callback call into closure call
 private writeFunctionTrampoline(ptr: Pointer[CChar], size: SizeT, nmemb: SizeT, userData: OpaquePointer): SizeT {
     var curl = Pointer[Curl](userData);
     return curl^.writeFunction(Pointer[Char](ptr), size * nmemb);
 }
 
+/// set function that is used to handle response body
+/// writeFunction must be compatibe with WriteFunction function holder
 curlEasySetWriteFunction(curl, writeFunction) {
     curl.writeFunction = WriteFunction(writeFunction);
     
@@ -81,19 +91,25 @@ curlEasySetWriteFunction(curl, writeFunction) {
     curlEasySetopt(curl, CURLOPT_WRITEFUNCTION, trampolinePointer);
 }
 
+/// ignore response output (by default libcurl writes response to stdout)
 curlEasySetWriteToDevNull(curl) =
     ..curlEasySetWriteFunction(curl, (data, size) -> size);
 
+/// write response to given stream
+/// note that String record is compatible with stream protocol
 curlEasySetWriteTo(curl, ref stream) =
     ..curlEasySetWriteFunction(curl, (data, size) -> {
         printTo(stream, CoordinateRange(data, data + size)); return size;
     });
 
+/// similar to writeFunctionTrampoline
 private headerFunctionTrampoline(ptr: Pointer[CChar], size: SizeT, nmemb: SizeT, userData: OpaquePointer): SizeT {
     var curl = Pointer[Curl](userData);
     return curl^.headerFunction(Pointer[Char](ptr), size * nmemb);
 }
 
+/// call headerFunction once for each header
+/// headerFunction must be compatible with HeaderFunction function holder
 curlEasySetHeaderFunction(curl, headerFunction) {
     curl.headerFunction = HeaderFunction(headerFunction);
     
@@ -102,16 +118,24 @@ curlEasySetHeaderFunction(curl, headerFunction) {
     curlEasySetopt(curl, CURLOPT_HEADERFUNCTION, trampolinePointer);
 }
 
+/// shortcut to set CURLOPT_URL
 curlEasySetUrl(curl, url) =
     ..curlEasySetopt(curl, CURLOPT_URL, url);
 
+/// shortcut to set CURLOPT_USERAGENT
 curlEasySetUserAgent(curl, userAgent) =
     ..curlEasySetopt(curl, CURLOPT_USERAGENT, userAgent);
 
+/// wrapper around curl_easy_perform
 curlEasyPerform(curl: Curl) {
     callHandleError(curl_easy_perform, "curl_easy_perform", curl.curl);
 }
 
+/// wrapper around curl_easy_getinfo
+/// note that Type must match info request
+/// otherwize behaviour is unspecified
+/// see http://curl.haxx.se/libcurl/c/curl_easy_getinfo.html
+/// the list of possible options
 [Type]
 private curlEasyGetInfoImpl(curl: Curl, info, static Type) {
     // TODO: do not initialize
@@ -120,30 +144,38 @@ private curlEasyGetInfoImpl(curl: Curl, info, static Type) {
     return r;
 }
 
+/// see curlEasyGetInfoImpl
 curlEasyGetInfoLong(curl: Curl, info) =
     curlEasyGetInfoImpl(curl, info, CLong);
 
+/// see curlEasyGetInfoImpl
 curlEasyGetInfoCString(curl: Curl, info) =
     curlEasyGetInfoImpl(curl, info, CStringRef);
 
+/// see curlEasyGetInfoImpl
 curlEasyGetInfoDouble(curl: Curl, info) =
     curlEasyGetInfoImpl(curl, info, CDouble);
 
+/// shortcut to fetch CURLINFO_RESPONSE_CODE
 curlEasyGetResponseCode(curl) =
     Int(curlEasyGetInfoLong(curl, CURLINFO_RESPONSE_CODE));
 
 
+/// wrapper around curl_easy_escape
 curlEasyEscape(curl: Curl, url) {
-    var r = curl_easy_escape(curl.curl, cstring(url), 0);
+    var r = curl_easy_escape(curl.curl, Pointer[CChar](begin(url)), Int(size(url)));
     finally curl_free(OpaquePointer(r));
     return String(r);
 }
 
+/// wrapper around curl_easy_unescape
 curlEasyUnescape(curl: Curl, url) {
-    var r = curl_easy_unescape(curl.curl, cstring(url), 0, null(Int));
+    var rs = 0;
+    var r = curl_easy_unescape(curl.curl, Pointer[CChar](begin(url)), Int(size(url)), &rs);
     finally curl_free(OpaquePointer(r));
-    return String(r);
+    return String(CoordinateRange(r, r + rs));
 }
 
 
+/// get curl version
 curlVersion() = CStringRef(curl_version());

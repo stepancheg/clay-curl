@@ -4,9 +4,6 @@ import libc.*;
 import curl.*;
 import curl.h.*;
 
-private contains(s, s1) =
-    not null?(strstr(cstring(s), cstring(s1)));
-
 [C | C == Char]
 overload String(p: Pointer[C], len) =
     String(CoordinateRange(p, p + len));
@@ -17,15 +14,17 @@ curlTestSuite() =
         "curl", array(
             TestCase("curlVersion", test => {
                 var version = curlVersion();
-                expectTrue(test, version, contains(version, "libcurl/"));
+                expectTrue(test, version, in?(version, "libcurl/"));
             }),
             TestCase("curlEasyEscape", test => {
                 var curl = Curl();
                 expectEqual(test, "escaped", String("abc%5E%25"), curlEasyEscape(curl, "abc^%"));
+                expectEqual(test, "escaped with 0s", String("a%00bc%5E%25"), curlEasyEscape(curl, "a\x00bc^%"));
             }),
             TestCase("curlEasyUnescape", test => {
                 var curl = Curl();
                 expectEqual(test, "unescaped", String("abc^%"), curlEasyUnescape(curl, "abc%5E%25"));
+                expectEqual(test, "unescaped with 0s", String("a\x00bc^%"), curlEasyUnescape(curl, "a%00bc%5E%25"));
             }),
             TestCase("curlEasyWriteHeader", test => {
                 var curl = Curl();
