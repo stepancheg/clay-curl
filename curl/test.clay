@@ -1,0 +1,60 @@
+import test.*;
+import libc.*;
+
+import curl.*;
+import curl.h.*;
+
+private contains(s, s1) =
+    not null?(strstr(cstring(s), cstring(s1)));
+
+[C | C == Char]
+overload String(p: Pointer[C], len) =
+    String(CoordinateRange(p, p + len));
+
+
+curlTestSuite() =
+    TestSuite(
+        "curl", array(
+            TestCase("curlVersion", test => {
+                var version = curlVersion();
+                expectTrue(test, version, contains(version, "libcurl/"));
+            }),
+            TestCase("curlEasyEscape", test => {
+                var curl = Curl();
+                expectEqual(test, "escaped", String("abc%5E%25"), curlEasyEscape(curl, "abc^%"));
+            }),
+            TestCase("curlEasyUnescape", test => {
+                var curl = Curl();
+                expectEqual(test, "unescaped", String("abc^%"), curlEasyUnescape(curl, "abc%5E%25"));
+            }),
+            TestCase("curlEasyWriteHeader", test => {
+                var curl = Curl();
+                curlEasySetUrl(curl, "http://ya.ru");
+                curlEasySetWriteToDevNull(curl);
+                var metLastModified = false;
+                curlEasySetHeaderFunction(curl, (data, len) -> {
+                    var header = String(data, len);
+                    metLastModified = metLastModified or beginsWith?(header, "Last-Modified:");
+                    return len;
+                });
+                curlEasyPerform(curl);
+                expectEqual(test, "200", 200, curlEasyGetResponseCode(curl));
+                expectTrue(test, "met Last-Modified", metLastModified);
+            }),
+            TestCase("curlEasySetWriteTo", test => {
+                var curl = Curl();
+                curlEasySetUrl(curl, "http://ya.ru");
+                var s = String();
+                curlEasySetWriteTo(curl, s);
+                curlEasyPerform(curl);
+                expectEqual(test, "200", 200, curlEasyGetResponseCode(curl));
+                expectTrue(test, "contains </body>", in?(s, "</body>"));
+            }),
+        ),
+    );
+
+
+curlTestMain() = testMain(curlTestSuite());
+
+main() = curlTestMain();
+
