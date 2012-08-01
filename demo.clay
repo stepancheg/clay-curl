@@ -1,0 +1,13 @@
+import curl.*;
+
+main(argv) {
+    if (size(argv) != 2) {
+        error("usage: ", argv[0], " <url>");
+    }
+    var url = argv[1];
+    
+    var curl = Curl();
+    curlEasySetUrl(curl, url);
+    curlEasySetWriteTo(curl, stdout);
+    curlEasyPerform(curl);
+}

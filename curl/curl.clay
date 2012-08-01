@@ -53,7 +53,8 @@ private define curlEasySetoptParamConvert(p);
 
 [L | Integer?(L) or L == Bool]
 overload curlEasySetoptParamConvert(l: L) = CLong(l);
-overload curlEasySetoptParamConvert(s: StringConstant) = cstring(s);
+[S | CCompatibleString?(S)]
+overload curlEasySetoptParamConvert(s: S) = cstring(s);
 [T]
 overload curlEasySetoptParamConvert(p: Pointer[T]) = p;
 [C | CCodePointer?(C)]
