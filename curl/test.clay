@@ -2,7 +2,6 @@ import test.*;
 import libc.*;
 
 import curl.*;
-import curl.h.*;
 
 [C | C == Char]
 overload String(p: Pointer[C], len) =
