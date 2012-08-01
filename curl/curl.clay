@@ -1,5 +1,5 @@
 import pointers.*;
-import curl.h.*;
+public import curl.h.*;
 
 record CurlException (operation: StringConstant, message: CStringRef);
 
