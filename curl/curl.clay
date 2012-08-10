@@ -1,7 +1,11 @@
-import pointers.*;
+import lambdas.*;
+import strings.*;
+import printer.*;
+
 public import curl.h.*;
 
-record CurlException (operation: StringConstant, message: CStringRef);
+
+record CurlException (operation: CStringRef, message: CStringRef);
 
 overload printTo(stream, ce: CurlException) {
     printTo(stream, CurlException, ": failed to call ", ce.operation, ": ", ce.message);
@@ -9,7 +13,7 @@ overload printTo(stream, ce: CurlException) {
 
 instance Exception (CurlException);
 
-private alias WriteFunction = Lambda[[Pointer[Char], SizeT], [SizeT]];
+private alias WriteFunction = Function[[Pointer[Char], SizeT], [SizeT]];
 private alias HeaderFunction = WriteFunction;
 
 record Curl (
@@ -18,12 +22,12 @@ record Curl (
     headerFunction: HeaderFunction,
 );
 
-overload RegularRecord?(static Curl) = false;
+overload RegularRecord?(#Curl) = false;
 
 overload Curl() {
     var curlCurl = curl_easy_init();
     if (null?(curlCurl)) {
-        throw CurlException("curl_easy_init", CStringRef(cstring("failed to initialize curl_easy")));
+        throw CurlException(CStringRef(cstring("curl_easy_init")), CStringRef(cstring("failed to initialize curl_easy")));
     }
     return Curl(curlCurl, WriteFunction(), HeaderFunction());
 }
@@ -41,24 +45,24 @@ curlEasyReset(curl: Curl) {
 
 
 /// call given function and throw exception if it failed
-[Code | CCodePointer?(Code)]
-private callHandleError(code: Code, op: StringConstant, ..args) {
+[..P]
+private callHandleError(code: ExternalCodePointer[..P], op, ..args) {
     var r = call(code, ..args);
     if (r != CURLE_OK) {
-        throw CurlException(op, CStringRef(curl_easy_strerror(r)));
+        throw CurlException(CStringRef(cstring(op)), CStringRef(curl_easy_strerror(r)));
     }
 }
 
 private define curlEasySetoptParamConvert(p);
 
-[L | Integer?(L) or L == Bool]
+[L when Integer?(L) or L == Bool]
 overload curlEasySetoptParamConvert(l: L) = CLong(l);
-[S | CCompatibleString?(S)]
+[S when CCompatibleString?(S)]
 overload curlEasySetoptParamConvert(s: S) = cstring(s);
 [T]
 overload curlEasySetoptParamConvert(p: Pointer[T]) = p;
-[C | CCodePointer?(C)]
-overload curlEasySetoptParamConvert(c: C) = c;
+[I, O]
+overload curlEasySetoptParamConvert(c: CCodePointer[I, O]) = c;
 
 /// generic curl_easy_setopt wrapper
 /// note value parameter must much option type, as described in curl manual
@@ -88,7 +92,7 @@ curlEasySetWriteFunction(curl, writeFunction) {
     curl.writeFunction = WriteFunction(writeFunction);
     
     var trampolinePointer = makeCCodePointer(writeFunctionTrampoline, Pointer[CChar], SizeT, SizeT, OpaquePointer);
-    curlEasySetopt(curl, CURLOPT_FILE, &curl);
+    curlEasySetopt(curl, CURLOPT_FILE, @curl);
     curlEasySetopt(curl, CURLOPT_WRITEFUNCTION, trampolinePointer);
 }
 
@@ -115,7 +119,7 @@ curlEasySetHeaderFunction(curl, headerFunction) {
     curl.headerFunction = HeaderFunction(headerFunction);
     
     var trampolinePointer = makeCCodePointer(headerFunctionTrampoline, Pointer[CChar], SizeT, SizeT, OpaquePointer);
-    curlEasySetopt(curl, CURLOPT_WRITEHEADER, &curl);
+    curlEasySetopt(curl, CURLOPT_WRITEHEADER, @curl);
     curlEasySetopt(curl, CURLOPT_HEADERFUNCTION, trampolinePointer);
 }
 
@@ -138,10 +142,10 @@ curlEasyPerform(curl: Curl) {
 /// see http://curl.haxx.se/libcurl/c/curl_easy_getinfo.html
 /// the list of possible options
 [Type]
-private curlEasyGetInfoImpl(curl: Curl, info, static Type) {
+private curlEasyGetInfoImpl(curl: Curl, info, #Type) {
     // TODO: do not initialize
     var r = Type();
-    callHandleError(curl_easy_getinfo, "curl_easy_getinfo", curl.curl, info, &r);
+    callHandleError(curl_easy_getinfo, "curl_easy_getinfo", curl.curl, info, @r);
     return r;
 }
 
@@ -172,7 +176,7 @@ curlEasyEscape(curl: Curl, url) {
 /// wrapper around curl_easy_unescape
 curlEasyUnescape(curl: Curl, url) {
     var rs = 0;
-    var r = curl_easy_unescape(curl.curl, Pointer[CChar](begin(url)), Int(size(url)), &rs);
+    var r = curl_easy_unescape(curl.curl, Pointer[CChar](begin(url)), Int(size(url)), @rs);
     finally curl_free(OpaquePointer(r));
     return String(CoordinateRange(r, r + rs));
 }

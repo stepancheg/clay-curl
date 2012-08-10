@@ -1,9 +1,12 @@
-import test.*;
 import libc.*;
+import strings.*;
+import algorithms.*;
+
+import test.*;
 
 import curl.*;
 
-[C | C == Char]
+[C when C == Char]
 overload String(p: Pointer[C], len) =
     String(CoordinateRange(p, p + len));
 

@@ -1,3 +1,6 @@
+import printer.*;
+import io.files.*;
+
 import curl.*;
 
 main(argv) {
