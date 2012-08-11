@@ -3,15 +3,8 @@ import strings.*;
 import printer.*;
 
 public import curl.h.*;
+public import curl.error.*;
 
-
-record CurlException (operation: CStringRef, message: CStringRef);
-
-overload printTo(stream, ce: CurlException) {
-    printTo(stream, CurlException, ": failed to call ", ce.operation, ": ", ce.message);
-}
-
-instance Exception (CurlException);
 
 private alias WriteFunction = Function[[Pointer[Char], SizeT], [SizeT]];
 private alias HeaderFunction = WriteFunction;

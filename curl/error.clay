@@ -1,0 +1,10 @@
+import printer.*;
+
+record CurlException (operation: CStringRef, message: CStringRef);
+
+overload printTo(stream, ce: CurlException) {
+    printTo(stream, CurlException, ": failed to call ", ce.operation, ": ", ce.message);
+}
+
+instance Exception (CurlException);
+
