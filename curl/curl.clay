@@ -4,6 +4,7 @@ import printer.*;
 
 public import curl.h.*;
 public import curl.error.*;
+public import curl.slist.*;
 
 
 private alias WriteFunction = Function[[Pointer[Char], SizeT], [SizeT]];
@@ -13,6 +14,7 @@ record Curl (
     curl: Pointer[CURL],
     writeFunction: WriteFunction,
     headerFunction: HeaderFunction,
+    requestHeaders: CurlSlist,
 );
 
 overload RegularRecord?(#Curl) = false;
@@ -22,7 +24,7 @@ overload Curl() {
     if (null?(curlCurl)) {
         throw CurlException(CStringRef(cstring("curl_easy_init")), CStringRef(cstring("failed to initialize curl_easy")));
     }
-    return Curl(curlCurl, WriteFunction(), HeaderFunction());
+    return Curl(curlCurl, WriteFunction(), HeaderFunction(), CurlSlist());
 }
 
 overload destroy(curl: Curl) {
@@ -124,6 +126,13 @@ curlEasySetUrl(curl, url) =
 /// shortcut to set CURLOPT_USERAGENT
 curlEasySetUserAgent(curl, userAgent) =
     ..curlEasySetopt(curl, CURLOPT_USERAGENT, userAgent);
+
+/// set request header
+[N, V when String?(N) and String?(V)]
+curlEasyAddRequestHeader(curl, headerName: N, headerValue: V) {
+    curlSlistAppend(curl.requestHeaders, headerName ++ ": " ++ headerValue);
+    curlEasySetopt(curl, CURLOPT_HTTPHEADER, curl.requestHeaders.slist);
+}
 
 /// wrapper around curl_easy_perform
 curlEasyPerform(curl: Curl) {
