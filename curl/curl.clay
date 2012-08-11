@@ -56,6 +56,7 @@ overload curlEasySetoptParamConvert(s: S) = cstring(s);
 overload curlEasySetoptParamConvert(p: Pointer[T]) = p;
 [I, O]
 overload curlEasySetoptParamConvert(c: CCodePointer[I, O]) = c;
+overload curlEasySetoptParamConvert(s: CurlSlist) = s.slist;
 
 /// generic curl_easy_setopt wrapper
 /// note value parameter must much option type, as described in curl manual

@@ -1,0 +1,23 @@
+import strings.*;
+
+import curl.h.*;
+import curl.error.*;
+
+// string list
+record CurlSlist (
+    slist: Pointer[Struct_curl_slist],
+);
+
+overload destroy(slist: CurlSlist) {
+    curl_slist_free_all(slist);
+}
+
+[S when String?(S)]
+curlSlistAppend(slist: CurlSlist, s: S) {
+    var next = curl_slist_append(slist.slist, cstring(s));
+    if (null?(next)) {
+        throw CurlException(CStringRef(cstring("curl_slist_append")), CStringRef());
+    }
+    slist.slist = next;
+}
+
