@@ -123,6 +123,15 @@ curlEasySetHeaderFunction(curl, headerFunction) {
 curlEasySetUrl(curl, url) =
     ..curlEasySetopt(curl, CURLOPT_URL, url);
 
+curlEasySetMethodPost(curl) =
+    ..curlEasySetopt(curl, CURLOPT_POST, 1);
+
+[S when String?(S)]
+curlEasySetPostData(curl, data: S) {
+    curlEasySetopt(curl, CURLOPT_POSTFIELDSIZE, size(data));
+    curlEasySetopt(curl, CURLOPT_COPYPOSTFIELDS, begin(data));
+}
+
 /// shortcut to set CURLOPT_USERAGENT
 curlEasySetUserAgent(curl, userAgent) =
     ..curlEasySetopt(curl, CURLOPT_USERAGENT, userAgent);
